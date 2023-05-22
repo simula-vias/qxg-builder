@@ -1,5 +1,5 @@
-# qxg-builder
-QXG-Builder is an approach for building saptio-temporal graphs from scenes in automated driving.
+# QXG-Builder
+QXG-Builder is an approach for building spatio-temporal graphs from scenes in automated driving.
 ## Installation
 Install required libraries in requirement.txt file.
 ```pip install -r requirements.txt```
