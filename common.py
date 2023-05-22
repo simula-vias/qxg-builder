@@ -1,9 +1,8 @@
 import itertools
 import json
 import time
-import vetqca_ops
+import operations
 import numpy as np
-from RA import RA_Algebra
 
 
 
@@ -27,11 +26,11 @@ def get_spatial_relations(boxes, o_i, o_j, rels):
     for r in rels:
         if isinstance(r, tuple):
             for r1 in list(r):
-                answer = vetqca_ops.compute_RA_Algebra(bb1, bb2, r1)
+                answer = operations.compute_RA_Algebra(bb1, bb2, r1)
                 if answer:
                     learned.add(r1)
         else:
-            answer = vetqca_ops.compute_RA_Algebra(bb1, bb2, r1)
+            answer = operations.compute_RA_Algebra(bb1, bb2, r1)
             if answer:
                 learned.add(r)
     return learned
@@ -117,11 +116,11 @@ def get_spatial_relations(boxes, o_i, o_j, rels):
     for r in rels:
         if isinstance(r, tuple):
             for r1 in list(r):
-                answer = vetqca_ops.compute_RA_Algebra(bb1, bb2, r1)
+                answer = operations.compute_RA_Algebra(bb1, bb2, r1)
                 if answer:
                     learned.add(r1)
         else:
-            answer = vetqca_ops.compute_RA_Algebra(bb1, bb2, r1)
+            answer = operations.compute_RA_Algebra(bb1, bb2, r1)
             if answer:
                 learned.add(r)
         # if len(learned)==2:

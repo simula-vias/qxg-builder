@@ -1,5 +1,4 @@
 bitsets==0.8.4
-matplotlib==3.5.2
 matplotlib==3.7.1
 numpy==1.24.3
 nuscenes_devkit==1.1.10
