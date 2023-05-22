@@ -29,3 +29,6 @@ This mode gives independent graphs for each frame.
 ### Temporal mode
 This mode gives independent graphs for each frame.
 ```python Main.py temporal -d /data/sets/nuscenes -v v1.0-mini```
+
+## Results:
+For each selected sensor there will be a folder created in the directory ```results``` which will contain both the execution time and the graph.
