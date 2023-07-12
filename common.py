@@ -33,13 +33,13 @@ def getCoord(coords):
 def SameQuarter(o1, o2):
 # +-----------------------------------+
 # |              |                    |
-# |   First      |      Second        |
+# |   Second     |      First         |
 # |   Quarter   case3      Quarter    |
 # |   (-, +)     |      (+, +)        |
 # |              |                    |
 # +-----case2----0----------case2-----+
 # |              |                    |
-# |   Fourth     |      Third         |
+# |   Third      |      Fourth        |
 # |   Quarter   case3      Quarter    |
 # |   (-, -)     |      (+, -)        |
 # |              |                    |
