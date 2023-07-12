@@ -164,7 +164,7 @@ def get_direction(o_i,o_j,ego_poses,s,t):
     directions[opposite_direction_indices] = "opposite direction"
 
 
-    return directions
+    return list(directions)
 
 def get_distance(o1,o2):
     centroid_1 = o1['translation'][:2]

@@ -18,10 +18,30 @@ def distance(p1, p2):
     x2, y2 = p2
     return hypot(x2 - x1, y2 - y1)
 
+def enlarge_bounding_box(box, slack):
+   
+        # Extract the coordinates of the bounding box
+        x_min, y_min, x_max, y_max = box
+        
+        # Calculate the slack values to add or subtract from the coordinates
+        x_slack = slack * (x_max - x_min)
+        y_slack = slack * (y_max - y_min)
+        
+        # Enlarge the bounding box by adding or subtracting the slack values
+        enlarged_x_min = x_min - x_slack
+        enlarged_y_min = y_min - y_slack
+        enlarged_x_max = x_max + x_slack
+        enlarged_y_max = y_max + y_slack
+        
+        # Append the enlarged bounding box to the result
+    
+        return [enlarged_x_min, enlarged_y_min, enlarged_x_max, enlarged_y_max]
 
 def compute_RA_Algebra(bb1, bb2, r):
    
     if len(bb1) == 4 and len(bb2) == 4:  # 2D version
+        bb1=enlarge_bounding_box(bb1,2)
+        bb2=enlarge_bounding_box(bb2,2)
         if "x" in r:
             X = compute_Allen_relation((bb1[0], bb1[2]), (bb2[0], bb2[2]), r, "x")
             return X
