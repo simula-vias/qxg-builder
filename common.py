@@ -37,48 +37,48 @@ def get_spatial_relations(boxes, o_i, o_j, rels):
 
 
 
-def get_relation(bb1, bb2,slack):
+def get_relation(bb1, bb2):
     return (
-        get_allen((bb1[0], bb1[2]), (bb2[0], bb2[2]),slack) + "x",
-        get_allen((bb1[1], bb1[3]), (bb2[1], bb2[3]),slack) + "y",
+        get_allen((bb1[0], bb1[2]), (bb2[0], bb2[2])) + "x",
+        get_allen((bb1[1], bb1[3]), (bb2[1], bb2[3])) + "y",
     )
 
 
-def get_allen(i1, i2,slack):
+def get_allen(i1, i2):
     if i2[1] < i1[0]:
         return "BI"
-    if i2[1] == i1[0]+slack:
+    if i2[1] == i1[0]:
         return "MI"
-    if i2[0] == i1[0]+slack and i2[1] < i1[1]:
+    if i2[0] < i1[0] < i2[1] and i1[0] < i2[1] < i1[1]:
+        return "OI"
+    if i2[0] == i1[0] and i2[1] < i1[1]:
         return "SI"
     if i1[0] < i2[0] < i1[1] and i1[0] < i2[1] < i1[1]:
         return "DI"
-    if i1[0] < i2[0] < i1[1] and i2[1] == i1[1]+slack:
+    if i1[0] < i2[0] < i1[1] and i2[1] == i1[1]:
         return "FI"
     if i2[0] == i1[0] and i2[1] == i1[1]:
         return "E"
     if i1[1] < i2[0]:
         return "B"
-    if i1[1] == i2[0]+slack:
+    if i1[1] == i2[0]:
         return "M"
-    if i1[0] == i2[0]+slack and i1[1] < i2[1]:
+    if i1[0] < i2[0] < i1[1] and i2[0] < i1[1] < i2[1]:
+        return "O"
+    if i1[0] == i2[0] and i1[1] < i2[1]:
         return "S"
     if i2[0] < i1[0] < i2[1] and i2[0] < i1[1] < i2[1]:
         return "D"
-    if i2[0] < i1[0] < i2[1] and i1[1] == i2[1]+slack:
+    if i2[0] < i1[0] < i2[1] and i1[1] == i2[1]:
         return "F"
 
-    if i2[0] < i1[0] < i2[1] and i1[0] < i2[1] < i1[1]:
-        return "OI"
-    if i1[0] < i2[0] < i1[1] and i2[0] < i1[1] < i2[1]:
-        return "O"
 
-def QXGBUILDER(boxes,slack, frame_idx=0, initial_graph={}):
+def QXGBUILDER(boxes, frame_idx=0, initial_graph={}):
     begin = time.time()
     learned = initial_graph
     for o_i, o_j in itertools.combinations(boxes, 2):
         rels = learned.get((o_i, o_j), [])
-        rels.append((frame_idx, get_relation(boxes[o_i], boxes[o_j],slack)))
+        rels.append((frame_idx, get_relation(boxes[o_i], boxes[o_j])))
         learned[(o_i, o_j)] = rels
 
     end = time.time()
