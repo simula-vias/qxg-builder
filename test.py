@@ -63,7 +63,7 @@ for nb, s in enumerate(scenes):
             grow_graph = mode == "temporal" and cp > 0
     
             res_sf[cp] = QXGBUILDER(
-                boxes,metadata, cp, dict(res_sf[cp - 1][0]) if grow_graph else {}
+                boxes,metadata,1, cp, dict(res_sf[cp - 1][0]) if grow_graph else {}
             )
             
             nodes = num_nodes(res_sf[cp][0])
@@ -76,3 +76,11 @@ for nb, s in enumerate(scenes):
         break
 
 print("Done")
+ego_poses=[*ego_poses.values()]
+velocities = compute_velocity(ego_poses)
+accelerations = compute_acceleration(velocities, ego_poses)
+angular_velocities = compute_angular_velocity(ego_poses)
+low_level_actions=[]
+#for  velocity, acceleration, angular_velocity in zip(velocities,accelerations,angular_velocities):
+#low_level_actions.append(get_low_level_action_mouvement(velocity, acceleration, angular_velocity)) 
+

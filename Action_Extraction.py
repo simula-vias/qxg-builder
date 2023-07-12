@@ -31,7 +31,7 @@ def compute_angular_velocity(ego_poses):
     return angular_velocities
 
 
-def compute_angular_velocity(object1_positions, object2_positions, timestamps):
+def compute_angular_velocity_pair(object1_positions, object2_positions, timestamps):
     # Convert positions to numpy arrays for easier computation
     object1_positions = np.array(object1_positions)
     object2_positions = np.array(object2_positions)
