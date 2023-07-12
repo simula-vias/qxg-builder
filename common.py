@@ -31,17 +31,17 @@ def getCoord(coords):
 
 
 def SameQuarter(o1, o2):
-    # +-----------------------------------+
+# +-----------------------------------+
 # |              |                    |
 # |   First      |      Second        |
-# |   Quarter   case3      Quarter       |
-# |   (+, +)     |      (-, +)        |
+# |   Quarter   case3      Quarter    |
+# |   (-, +)     |      (+, +)        |
 # |              |                    |
-# +-----case2---------------case2---------+
+# +-----case2----0----------case2-----+
 # |              |                    |
 # |   Fourth     |      Third         |
-# |   Quarter    case3      Quarter       |
-# |   (+, -)     |      (-, -)        |
+# |   Quarter   case3      Quarter    |
+# |   (-, -)     |      (+, -)        |
 # |              |                    |
 # +-----------------------------------+
     xc, yc = 0, 0
