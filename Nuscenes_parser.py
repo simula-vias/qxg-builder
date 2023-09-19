@@ -101,7 +101,13 @@ def BBox_from_Cameras(sensor, s, nusc):
     return collected
 
 
-def getLidarBBox_of_Scenes(s, nusc):
+def rotate_2d_bbox(bbox, angle):
+    # Rotation matrix
+    R = np.array([[np.cos(angle), -np.sin(angle)], [np.sin(angle), np.cos(angle)]])
+    # Rotate each corner
+    return [np.dot(R, corner - bbox.center[:2]) + bbox.center[:2] for corner in bbox.corners()[:2, :].T]
+
+def getLidarBBox_of_Scenes1(s, nusc):
     collected = []
 
     my_scene = s
@@ -118,15 +124,17 @@ def getLidarBBox_of_Scenes(s, nusc):
         lidar = nusc.get("sample_data", n["data"][sensor])
         
         pose = nusc.get("ego_pose", lidar["ego_pose_token"])
+        #nusc.render_sample_data(lidar["token"])
 
         
         # default car size and position
-        w1, l1, h1 = 1.871, 4.478, 1.456
+        w1, l1, h1 =  4.478,1.871, 1.456
         # x, y, z = -12.327768364061617, -0.40654977344377285, 0.664
 
-        # Calculate the pose on the map and append.
-
-        ego_box = [0, 0, l1, w1]
+        # Get the quaternion rotation of the ego vehicle
+        ego_quat = Quaternion(pose['rotation'])
+        # Compute the yaw angle (rotation around the vertical axis)
+        ego_box = [0, 0, w1,l1]
         my_annotation_token = n["anns"]
         
         j = 0
@@ -148,12 +156,15 @@ def getLidarBBox_of_Scenes(s, nusc):
             translation = "translation"
             size = my_annotation_metadata["size"]
             for box in boxes:
+                relative_rotation = ego_quat.inverse * box.orientation
+                rotated_box = Box(box.center, box.wlh, relative_rotation, name=box.name, token=box.token)
+
                 view: np.ndarray = np.eye(4)
-                corners = view_points(box.corners(), view, False)[:2, :]
-                minx, maxx = np.min(corners[0, :]), np.max(corners[0, :]) + margin
-                miny, maxy = np.min(corners[1, :]), np.max(corners[1, :]) + margin
+                corners = view_points(rotated_box.corners(), view, False)[:2, :]
+                minx, maxx = np.min(corners[0, :]), np.max(corners[0, :])
+                miny, maxy = np.min(corners[1, :]), np.max(corners[1, :]) 
                 bboxes.append([miny, minx, h, w])
-                direction = box.center
+                direction = rotated_box.center
 
 
             my_annotation_metadata["bbox"] = bboxes
@@ -163,7 +174,6 @@ def getLidarBBox_of_Scenes(s, nusc):
 
             metadata.append(my_annotation_metadata.copy())
             j += 1
-
         try:
             n = nusc.get("sample", n["next"])
 
@@ -172,9 +182,142 @@ def getLidarBBox_of_Scenes(s, nusc):
         collected.append(metadata.copy())
     return collected
 
+def getLidarBBox_of_Scenes(s, nusc):
+    collected = []
+    my_scene = s
+    first_sample_token = my_scene["first_sample_token"]
+    n = nusc.get("sample", first_sample_token)
+    margin = 10
+
+    while True:
+        metadata = []
+        sensor = "LIDAR_TOP"
+        lidar = nusc.get("sample_data", n["data"][sensor])
+        pose = nusc.get("ego_pose", lidar["ego_pose_token"])
+        #nusc.render_sample_data(lidar["token"])
+
+        # default car size and position
+        w1, l1, h1 =  4.478,1.871, 1.456
+
+        # Create a box representing the ego vehicle in the ego vehicle's coordinate frame
+        # The center of the box is at (0, 0, 0), and the orientation is the identity quaternion
+        ego_box = [0, 0, w1,l1]
+        
+        # Compute ego car's rotation matrix
+        ref_sd_token = n["data"][sensor]
+        
+        _, boxes, _ = nusc.get_sample_data(ref_sd_token,  use_flat_vehicle_coordinates=True)
+        for t in boxes:
+            bboxes = []
+            my_annotation_metadata = nusc.get("sample_annotation", t.token)
+            w, l, h = t.wlh
+
+            dist = np.linalg.norm(
+                np.array(pose["translation"])
+                - np.array(my_annotation_metadata["translation"])
+            )
+           # _, ax = plt.subplots(1, 1, figsize=(9, 9))
+
+            #t.render(ax, view=np.eye(4))
+            translation = np.array(pose['translation'])
+
+            view: np.ndarray = np.eye(4)
+
+            corners = view_points(t.corners(), view, False)[:2, :]
+             
+            bbox_2d = [
+                        np.min(corners[0, :]),  # min_x
+                        np.min(corners[1, :]),  # min_y
+                        l,  # max_x
+                        w  # max_y
+                    ]
+            bboxes.append(bbox_2d)
+            
+            direction = t.center
+
+            my_annotation_metadata["bbox"] = bboxes
+            my_annotation_metadata["corners"] = corners
+
+            my_annotation_metadata["dist"] = dist
+            my_annotation_metadata["ego_box"] = ego_box
+            my_annotation_metadata["direction"] = direction
+
+            metadata.append(my_annotation_metadata.copy())
+            #plt.show()
+
+        try:
+            n = nusc.get("sample", n["next"])
+        except:
+            break
+        collected.append(metadata.copy())
+    return collected
+
+import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib import patches, text, patheffects
+from pyquaternion import Quaternion
+import matplotlib.patches as mpatches
+
+def print_boxes(collected,colors = ('b', 'r', 'k'),linewidth: float = 1):
+    rels = 'Bx|BIx|Dx|DIx|Ex|Fx|FIx|Mx|MIx|Ox|OIx|Sx|SIx|By|BIy|Dy|DIy|Ey|Fy|FIy|My|MIy|Oy|OIy|Sy|SIy'.split(
+        '|')
+    cp = 0
+    dfs = []
+    for c in collected:
+        fig1, axis = plt.subplots()
+        #ax1.set_xlim([-60, 50])
+        #ax1.set_ylim([-60, 50])
+        cp += 1
+        df = pd.DataFrame.from_dict(c)
+        dfs.append(df)
+        concat = pd.concat(dfs)
+        groups = concat.groupby(['instance_token'])
+        result = []
+        egobox = np.array(c[0]['ego_box'])
+
+
+        for d in c:
+    
+            bbox = np.array(d['bbox'][0])
+            corners = np.array(d['corners'])
+            center = np.mean(corners, axis=1)
+            category = d['category_name']  # Replace with your way of getting the category
+            token = d['instance_token'] # Assuming 'instance_token' contains the token
+ 
+            annotation_text = f"{category}\n{token}"
+
+            def draw_rect(selected_corners, color):
+                prev = selected_corners[-1]
+                for corner in selected_corners:
+                    axis.plot([prev[0], corner[0]], [prev[1], corner[1]], color=color, linewidth=linewidth)
+                    prev = corner
+
+            # Draw the sides
+            for i in range(4):
+                axis.plot([corners.T[i][0], corners.T[i + 4][0]],
+                          [corners.T[i][1], corners.T[i + 4][1]],
+                          color=colors[2], linewidth=linewidth)
+
+            # Draw front (first 4 corners) and rear (last 4 corners) rectangles(3d)/lines(2d)
+            draw_rect(corners.T[:4], colors[0])
+            draw_rect(corners.T[4:], colors[1])
+
+            # Draw line indicating the front
+            center_bottom_forward = np.mean(corners.T[2:4], axis=0)
+            center_bottom = np.mean(corners.T[[2, 3, 7, 6]], axis=0)
+            axis.text(center_bottom[0], center_bottom[1], annotation_text, color='black', fontsize=1, ha='center')
+
+            axis.plot([center_bottom[0], center_bottom_forward[0]],
+                      [center_bottom[1], center_bottom_forward[1]],
+                      color=colors[0], linewidth=linewidth)
+            axis.plot([egobox[0], egobox[1]], [egobox[2], egobox[3]], color='r', linewidth=linewidth)
+            
+        fig1.savefig('lidar_projections/x'+str(cp)+'.png', dpi=600)
+        
 
 def getBBoxFromSensor(sensor, s, nusc):
     if sensor == "LIDAR_TOP":
+
         return getLidarBBox_of_Scenes(s, nusc)
     else:
         return BBox_from_Cameras(sensor, s, nusc)

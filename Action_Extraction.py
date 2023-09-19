@@ -92,7 +92,7 @@ def compute_velocity_object(ego_poses,timestamps):
         delta_position = np.array(ego_poses[i]) - np.array(ego_poses[i-1])
         
         # Calculate the time difference
-        delta_time = (timestamps[i]- timestamps[i-1]) * 1e-6 #1e-6 because timestamp is in micro seconds.
+        delta_time = (timestamps[i]- timestamps[i-1]) * 1e-6 #1e-6 to transform to seconds because timestamp is in micro seconds.
         
         # Calculate the velocity
         velocity = delta_position / delta_time
@@ -131,7 +131,47 @@ def getEgoPoses(nusc,scene,sensor = 'LIDAR_TOP'):
             break
         current_sample = nusc.get('sample', current_sample['next'])
     return ego_poses
+import pandas as pd
+
+def getObjectPoses1(nusc, ego_poses,scene, sensor='LIDAR_TOP'):
+    timestamps_list = []
+    poses_list = []
+    labels = {}
     
+    first_sample_token = scene['first_sample_token']
+    current_sample = nusc.get('sample', first_sample_token)
+
+    for i, time in ego_poses.items():
+        timestamps_list.append(['ego',time["timestamp"]])
+    for i, state in ego_poses.items():
+        poses_list.append(['ego',state["position"]])
+    while current_sample is not None:
+        lidar = nusc.get('sample_data', current_sample['data'][sensor])
+        
+        for annotation_token in current_sample['anns']:
+            annotation = nusc.get('sample_annotation', annotation_token)
+            object_token = annotation['instance_token']
+            
+            # Store the timestamp, position, and label
+            timestamps_list.append([object_token, current_sample['timestamp']])
+            poses_list.append([object_token, annotation['translation']])
+            labels[object_token] = annotation['category_name']
+
+        # Move on to the next sample
+        if current_sample['next'] == '':
+            break
+        current_sample = nusc.get('sample', current_sample['next'])
+
+    # Convert lists to DataFrames and group by object_token
+    timestamps_df = pd.DataFrame(timestamps_list).groupby([0])
+    poses_df = pd.DataFrame(poses_list).groupby([0])
+
+    # Convert grouped DataFrames to dictionaries
+    timestamps_dict = {group_name: group[[1]].values.tolist() for group_name, group in timestamps_df}
+    object_poses = {group_name: group[[1]].values.tolist() for group_name, group in poses_df}
+
+    return object_poses, timestamps_dict, labels
+
 def getObjectPoses(nusc,scene,sensor = 'LIDAR_TOP'):
     object_poses = {}
     
@@ -180,19 +220,22 @@ def get_low_level_action_mouvement(velocity, acceleration, angular_velocity):
     "Accelerate": When acceleration is positive and velocity is positive or close to zero.
     "Decelerate": When acceleration is negative and velocity is positive or close to zero.
     '''
-    
-    if abs(velocity) < 0.2 and abs(acceleration) < 0.2:
+    velocity_magnitude = np.linalg.norm(velocity)
+    acceleration_magnitude = np.linalg.norm(acceleration)
+    angular_velocity_magnitude = np.linalg.norm(angular_velocity)
+
+    if velocity_magnitude < 0.4 and acceleration_magnitude < 0.4:
         return "Stop"
-    elif velocity > 0 and abs(angular_velocity) < 0.2:
-        return "Forward"
-    elif velocity < 0 and abs(angular_velocity) < 0.2:
-        return "Reverse"
-    elif acceleration > 0 and (velocity > 0 or abs(velocity) < 0.2):
+    elif acceleration_magnitude > 0 and (velocity_magnitude > 0 or abs(velocity_magnitude) < 0.4):
         return "Accelerate"
-    elif acceleration < 0 and (velocity > 0 or abs(velocity) < 0.2):
+    elif acceleration_magnitude < 0 and (velocity_magnitude > 0 or abs(velocity_magnitude) < 0.4):
         return "Decelerate"
+    elif velocity_magnitude > 0 and angular_velocity_magnitude < 0.4:
+        return "Forward"
+    elif velocity_magnitude < 0 and angular_velocity_magnitude < 0.4:
+        return "Reverse"
     else:
-        return "Unknown"
+        return "cruising"
 def get_low_level_action_steering(velocity, acceleration, angular_velocity):
     '''
     "Stop": When velocity is close to zero and acceleration is minimal.
@@ -203,18 +246,25 @@ def get_low_level_action_steering(velocity, acceleration, angular_velocity):
     "Accelerate": When acceleration is positive and velocity is positive or close to zero.
     "Decelerate": When acceleration is negative and velocity is positive or close to zero.
     '''
-    
+    velocity_magnitude = np.linalg.norm(velocity)
+    acceleration_magnitude = np.linalg.norm(acceleration)
+    angular_velocity_magnitude = np.linalg.norm(angular_velocity)
 
-    if angular_velocity > 0 and (velocity > 0 or abs(velocity) < 0.2):
+
+    if angular_velocity_magnitude > 0 and (velocity_magnitude > 0 or abs(velocity_magnitude) < 0.2):
         return "Turn Right"
-    elif angular_velocity < 0 and (velocity > 0 or abs(velocity) < 0.2):
+    elif angular_velocity_magnitude < 0 and (velocity_magnitude > 0 or abs(velocity_magnitude) < 0.2):
         return "Turn Left"
 
     else:
         return "Unknown"
-# Example usage
-velocity = 10.5  # meters per second
-acceleration = 2.0  # meters per second squared
-angular_velocity = 0.1  # radians per second
-
-
+def get_actions(ego_poses):
+    velocities = compute_velocity([*ego_poses.values()])
+    accelerations = compute_acceleration(velocities, [*ego_poses.values()])
+    angular_velocities = compute_angular_velocity([*ego_poses.values()])
+    low_level_actions={}
+    cp=1
+    for  velocity, acceleration, angular_velocity in zip(velocities,accelerations,angular_velocities):
+        low_level_actions[cp]=get_low_level_action_mouvement(velocity, acceleration, angular_velocity) 
+        cp+=1
+    return low_level_actions
