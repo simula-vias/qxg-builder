@@ -32,3 +32,23 @@ This mode gives independent graphs for each frame.
 
 ## Results:
 For each selected sensor there will be a folder created in the directory ```results``` which will contain both the execution time and the graph.
+
+## Docker
+
+To build and run the container:
+### Build the image
+docker build -t qxg-builder .
+
+### Run the container
+docker run -it qxg-builder
+Note: Since this project works with the NuScenes dataset, you'll need to mount the dataset directory when running the container in practice. You can do this by adding a volume mount:
+```
+docker run -it -v /path/to/your/nuscenes/dataset:/data/sets/nuscenes qxg-builder
+```
+The path /data/sets/nuscenes matches the default dataroot path shown in `Main.py`:
+```
+        "-d",
+        "--dataroot",
+        default="./data/sets/nuscenes",
+        help="Path of nuScenes dataset",
+```
